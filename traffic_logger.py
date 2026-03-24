@@ -22,12 +22,12 @@ VEHICLE_CLASSES = {
 
 
 @dataclass
-class VehicleEvent:
+class VehicleState:
     vehicle_id: int
     vehicle_type: str = "vehicle"
-    entry_frame: Optional[int] = None
-    exit_frame: Optional[int] = None
     last_center: Optional[Tuple[float, float]] = None
+    pending_line: Optional[str] = None
+    pending_frame: Optional[int] = None
 
 
 def seconds_to_hhmmss_mmm(seconds: float) -> str:
@@ -210,7 +210,8 @@ def run() -> None:
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(str(output_video), fourcc, fps if fps > 0 else 25.0, (width, height))
 
-    track_events: Dict[int, VehicleEvent] = {}
+    vehicle_states: Dict[int, VehicleState] = {}
+    trip_rows = []
     frame_index = 0
     frame_interval_ms = (1000.0 / fps) / playback_speed if fps > 0 else 1.0
 
@@ -274,20 +275,56 @@ def run() -> None:
                     x1, y1, x2, y2 = map(int, box)
                     center = ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
 
-                    event = track_events.get(track_id)
-                    if event is None:
-                        event = VehicleEvent(vehicle_id=track_id)
-                        track_events[track_id] = event
+                    state = vehicle_states.get(track_id)
+                    if state is None:
+                        state = VehicleState(vehicle_id=track_id)
+                        vehicle_states[track_id] = state
 
-                    event.vehicle_type = VEHICLE_CLASSES.get(class_id, "vehicle")
+                    state.vehicle_type = VEHICLE_CLASSES.get(class_id, "vehicle")
 
-                    if event.entry_frame is None and crossed_segment(event.last_center, center, entry_p1, entry_p2):
-                        event.entry_frame = frame_index
+                    crossed_entry = crossed_segment(state.last_center, center, entry_p1, entry_p2)
+                    crossed_exit = crossed_segment(state.last_center, center, exit_p1, exit_p2)
 
-                    if event.exit_frame is None and event.entry_frame is not None and crossed_segment(event.last_center, center, exit_p1, exit_p2):
-                        event.exit_frame = frame_index
+                    crossed_line = None
+                    if crossed_entry and not crossed_exit:
+                        crossed_line = "ENTRY"
+                    elif crossed_exit and not crossed_entry:
+                        crossed_line = "EXIT"
+                    elif crossed_entry and crossed_exit:
+                        dist_entry = abs(point_side(entry_p1, entry_p2, center))
+                        dist_exit = abs(point_side(exit_p1, exit_p2, center))
+                        crossed_line = "ENTRY" if dist_entry <= dist_exit else "EXIT"
 
-                    event.last_center = center
+                    if crossed_line is not None:
+                        if state.pending_line is None:
+                            state.pending_line = crossed_line
+                            state.pending_frame = frame_index
+                        elif state.pending_line == crossed_line:
+                            state.pending_frame = frame_index
+                        else:
+                            first_line = state.pending_line
+                            first_frame = state.pending_frame if state.pending_frame is not None else frame_index
+                            second_line = crossed_line
+                            second_frame = frame_index
+
+                            entry_frame = first_frame if first_line == "ENTRY" else second_frame
+                            exit_frame = first_frame if first_line == "EXIT" else second_frame
+                            direction = f"{first_line}->{second_line}"
+
+                            trip_rows.append(
+                                {
+                                    "Vehicle": state.vehicle_id,
+                                    "Vehicle type": state.vehicle_type,
+                                    "Direction": direction,
+                                    "LineA(t1)": frame_to_timestamp(entry_frame, fps),
+                                    "LineB(t2)": frame_to_timestamp(exit_frame, fps),
+                                }
+                            )
+
+                            state.pending_line = None
+                            state.pending_frame = None
+
+                    state.last_center = center
 
                     label = f"ID {track_id} {VEHICLE_CLASSES.get(class_id, 'vehicle')}"
                     cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 200, 0), 2)
@@ -328,23 +365,11 @@ def run() -> None:
     if args.show:
         cv2.destroyAllWindows()
 
-    rows = []
-    for track_id in sorted(track_events):
-        event = track_events[track_id]
-        if event.entry_frame is None and event.exit_frame is None:
-            continue
-        rows.append(
-            {
-                "Vehicle": event.vehicle_id,
-                "Vehicle type": event.vehicle_type,
-                "LineA(t1)": frame_to_timestamp(event.entry_frame, fps) if event.entry_frame is not None else "",
-                "LineB(t2)": frame_to_timestamp(event.exit_frame, fps) if event.exit_frame is not None else "",
-            }
-        )
+    rows = trip_rows
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows, columns=["Vehicle", "Vehicle type", "LineA(t1)", "LineB(t2)"]).to_excel(out_path, index=False)
+    pd.DataFrame(rows, columns=["Vehicle", "Vehicle type", "Direction", "LineA(t1)", "LineB(t2)"]).to_excel(out_path, index=False)
     print(f"Saved {len(rows)} records to {out_path}")
 
 

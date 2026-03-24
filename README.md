@@ -56,12 +56,13 @@ The generated Excel file includes:
 
 - `Vehicle`
 - `Vehicle Type`
+- `Direction` (`ENTRY->EXIT` or `EXIT->ENTRY`)
 - `LineA(t1)` (`HH:MM:SS.mmm`)
 - `LineB(t2)` (`HH:MM:SS.mmm`)
 
 Example:
 
-| Vehicle | Vehicle type | LineA(t1) | LineB(t2) |
-|-----------:|:------------:|:----------:|:---------:|
-| 1 | car | 00:01:12.145 | 00:01:25.908 |
-| 2 | bus | 00:02:03.021 | 00:02:18.774 |
+| Vehicle | Vehicle type | Direction | LineA(t1) | LineB(t2) |
+|-----------:|:------------:|:-----------:|:----------:|:---------:|
+| 1 | car | ENTRY->EXIT | 00:01:12.145 | 00:01:25.908 |
+| 2 | bus | EXIT->ENTRY | 00:02:18.774 | 00:02:03.021 |
