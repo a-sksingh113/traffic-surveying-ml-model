@@ -125,6 +125,45 @@ def resize_segment(
     return (nx1, ny1), (nx2, ny2)
 
 
+def resize_segment_from_endpoint(
+    p1: Tuple[int, int],
+    p2: Tuple[int, int],
+    delta_len: float,
+    endpoint: str,
+    width: int,
+    height: int,
+) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    x1, y1 = p1
+    x2, y2 = p2
+
+    vx = float(x2 - x1)
+    vy = float(y2 - y1)
+    length = math.hypot(vx, vy)
+    if length < 1e-6:
+        return p1, p2
+
+    new_length = max(30.0, length + delta_len)
+    ux = vx / length
+    uy = vy / length
+
+    if endpoint == "p1":
+        nx1 = int(round(x2 - ux * new_length))
+        ny1 = int(round(y2 - uy * new_length))
+        nx2, ny2 = x2, y2
+    elif endpoint == "p2":
+        nx1, ny1 = x1, y1
+        nx2 = int(round(x1 + ux * new_length))
+        ny2 = int(round(y1 + uy * new_length))
+    else:
+        return p1, p2
+
+    nx1 = max(0, min(width - 1, nx1))
+    nx2 = max(0, min(width - 1, nx2))
+    ny1 = max(0, min(height - 1, ny1))
+    ny2 = max(0, min(height - 1, ny2))
+    return (nx1, ny1), (nx2, ny2)
+
+
 def rotate_segment(
     p1: Tuple[int, int],
     p2: Tuple[int, int],
@@ -283,10 +322,28 @@ def run() -> None:
         annotated = frame.copy()
         draw_road_marker_line(annotated, entry_p1, entry_p2, "ENTRY")
         draw_road_marker_line(annotated, exit_p1, exit_p2, "EXIT")
-        controls_y = max(52, height - 20)
+        controls_y = max(96, height - 20)
         cv2.putText(
             annotated,
-            "W/S: Entry Y  I/K: Exit Y  D/A: Entry len  L/J: Exit len",
+            "W/S: Entry Y  I/K: Exit Y  E/R: Entry angle  U/O: Exit angle",
+            (20, controls_y - 66),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (255, 255, 255),
+            2,
+        )
+        cv2.putText(
+            annotated,
+            "D/A: Entry len(center)  L/J: Exit len(center)",
+            (20, controls_y - 44),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (255, 255, 255),
+            2,
+        )
+        cv2.putText(
+            annotated,
+            "T/G: Entry P1 len  Y/H: Entry P2 len",
             (20, controls_y - 22),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
@@ -295,7 +352,7 @@ def run() -> None:
         )
         cv2.putText(
             annotated,
-            "E/R: Entry angle  U/O: Exit angle  Q/ESC: Quit",
+            "V/B: Exit P1 len  N/M: Exit P2 len  Q/ESC: Quit",
             (20, controls_y),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
@@ -402,6 +459,14 @@ def run() -> None:
                 entry_p1, entry_p2 = resize_segment(entry_p1, entry_p2, 24.0, width, height)
             elif key == ord("a"):
                 entry_p1, entry_p2 = resize_segment(entry_p1, entry_p2, -24.0, width, height)
+            elif key == ord("t"):
+                entry_p1, entry_p2 = resize_segment_from_endpoint(entry_p1, entry_p2, 24.0, "p1", width, height)
+            elif key == ord("g"):
+                entry_p1, entry_p2 = resize_segment_from_endpoint(entry_p1, entry_p2, -24.0, "p1", width, height)
+            elif key == ord("y"):
+                entry_p1, entry_p2 = resize_segment_from_endpoint(entry_p1, entry_p2, 24.0, "p2", width, height)
+            elif key == ord("h"):
+                entry_p1, entry_p2 = resize_segment_from_endpoint(entry_p1, entry_p2, -24.0, "p2", width, height)
             elif key == ord("e"):
                 entry_p1, entry_p2 = rotate_segment(entry_p1, entry_p2, 2.5, width, height)
             elif key == ord("r"):
@@ -410,6 +475,14 @@ def run() -> None:
                 exit_p1, exit_p2 = resize_segment(exit_p1, exit_p2, 24.0, width, height)
             elif key == ord("j"):
                 exit_p1, exit_p2 = resize_segment(exit_p1, exit_p2, -24.0, width, height)
+            elif key == ord("v"):
+                exit_p1, exit_p2 = resize_segment_from_endpoint(exit_p1, exit_p2, 24.0, "p1", width, height)
+            elif key == ord("b"):
+                exit_p1, exit_p2 = resize_segment_from_endpoint(exit_p1, exit_p2, -24.0, "p1", width, height)
+            elif key == ord("n"):
+                exit_p1, exit_p2 = resize_segment_from_endpoint(exit_p1, exit_p2, 24.0, "p2", width, height)
+            elif key == ord("m"):
+                exit_p1, exit_p2 = resize_segment_from_endpoint(exit_p1, exit_p2, -24.0, "p2", width, height)
             elif key == ord("u"):
                 exit_p1, exit_p2 = rotate_segment(exit_p1, exit_p2, 2.5, width, height)
             elif key == ord("o"):

@@ -29,8 +29,14 @@ Interactive controls during preview:
 
 - `W` / `S` → move Entry line up/down
 - `I` / `K` → move Exit line up/down
+- `D` / `A` → change Entry line length from center
+- `L` / `J` → change Exit line length from center
 - `E` / `R` → rotate Entry line
 - `U` / `O` → rotate Exit line
+- `T` / `G` → change Entry line length from `p1` side
+- `Y` / `H` → change Entry line length from `p2` side
+- `V` / `B` → change Exit line length from `p1` side
+- `N` / `M` → change Exit line length from `p2` side
 - `Q` or `Esc` → quit processing
 
 Line style is road-marker style (white segment with green endpoints), similar to perspective road guides.
