@@ -29,6 +29,8 @@ Interactive controls during preview:
 
 - `W` / `S` → move Entry line up/down
 - `I` / `K` → move Exit line up/down
+- `E` / `R` → rotate Entry line
+- `U` / `O` → rotate Exit line
 - `Q` or `Esc` → quit processing
 
 Line style is road-marker style (white segment with green endpoints), similar to perspective road guides.

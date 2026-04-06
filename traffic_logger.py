@@ -125,6 +125,45 @@ def resize_segment(
     return (nx1, ny1), (nx2, ny2)
 
 
+def rotate_segment(
+    p1: Tuple[int, int],
+    p2: Tuple[int, int],
+    delta_degrees: float,
+    width: int,
+    height: int,
+) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    x1, y1 = p1
+    x2, y2 = p2
+
+    vx = float(x2 - x1)
+    vy = float(y2 - y1)
+    length = math.hypot(vx, vy)
+    if length < 1e-6:
+        return p1, p2
+
+    theta = math.radians(delta_degrees)
+    cos_t = math.cos(theta)
+    sin_t = math.sin(theta)
+    rvx = vx * cos_t - vy * sin_t
+    rvy = vx * sin_t + vy * cos_t
+
+    cx = (x1 + x2) / 2.0
+    cy = (y1 + y2) / 2.0
+    half_vx = rvx / 2.0
+    half_vy = rvy / 2.0
+
+    nx1 = int(round(cx - half_vx))
+    ny1 = int(round(cy - half_vy))
+    nx2 = int(round(cx + half_vx))
+    ny2 = int(round(cy + half_vy))
+
+    nx1 = max(0, min(width - 1, nx1))
+    nx2 = max(0, min(width - 1, nx2))
+    ny1 = max(0, min(height - 1, ny1))
+    ny2 = max(0, min(height - 1, ny2))
+    return (nx1, ny1), (nx2, ny2)
+
+
 def draw_road_marker_line(image, p1: Tuple[int, int], p2: Tuple[int, int], label: str) -> None:
     cv2.line(image, p1, p2, (255, 255, 255), 4)
     cv2.circle(image, p1, 8, (0, 255, 128), -1)
@@ -244,10 +283,20 @@ def run() -> None:
         annotated = frame.copy()
         draw_road_marker_line(annotated, entry_p1, entry_p2, "ENTRY")
         draw_road_marker_line(annotated, exit_p1, exit_p2, "EXIT")
+        controls_y = max(52, height - 20)
         cv2.putText(
             annotated,
-            "W/S: Entry Y  I/K: Exit Y  D/A: Entry len  L/J: Exit len  Q/ESC: Quit",
-            (20, max(30, height - 20)),
+            "W/S: Entry Y  I/K: Exit Y  D/A: Entry len  L/J: Exit len",
+            (20, controls_y - 22),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (255, 255, 255),
+            2,
+        )
+        cv2.putText(
+            annotated,
+            "E/R: Entry angle  U/O: Exit angle  Q/ESC: Quit",
+            (20, controls_y),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
             (255, 255, 255),
@@ -353,10 +402,18 @@ def run() -> None:
                 entry_p1, entry_p2 = resize_segment(entry_p1, entry_p2, 24.0, width, height)
             elif key == ord("a"):
                 entry_p1, entry_p2 = resize_segment(entry_p1, entry_p2, -24.0, width, height)
+            elif key == ord("e"):
+                entry_p1, entry_p2 = rotate_segment(entry_p1, entry_p2, 2.5, width, height)
+            elif key == ord("r"):
+                entry_p1, entry_p2 = rotate_segment(entry_p1, entry_p2, -2.5, width, height)
             elif key == ord("l"):
                 exit_p1, exit_p2 = resize_segment(exit_p1, exit_p2, 24.0, width, height)
             elif key == ord("j"):
                 exit_p1, exit_p2 = resize_segment(exit_p1, exit_p2, -24.0, width, height)
+            elif key == ord("u"):
+                exit_p1, exit_p2 = rotate_segment(exit_p1, exit_p2, 2.5, width, height)
+            elif key == ord("o"):
+                exit_p1, exit_p2 = rotate_segment(exit_p1, exit_p2, -2.5, width, height)
 
         frame_index += 1
 
