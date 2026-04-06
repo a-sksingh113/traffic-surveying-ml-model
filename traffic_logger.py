@@ -40,6 +40,13 @@ def seconds_to_hhmmss_mmm(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
 
 
+def seconds_to_ss_mmm(seconds: float) -> str:
+    total_ms = int(round(max(seconds, 0.0) * 1000.0))
+    secs = total_ms // 1000
+    millis = total_ms % 1000
+    return f"{secs}.{millis:03d}"
+
+
 def frame_to_timestamp(frame_index: int, fps: float) -> str:
     if fps <= 0:
         return "00:00:00.000"
@@ -413,6 +420,8 @@ def run() -> None:
                             first_frame = state.pending_frame if state.pending_frame is not None else frame_index
                             second_line = crossed_line
                             second_frame = frame_index
+                            duration_seconds = ((second_frame - first_frame) / fps) if fps > 0 else 0.0
+                            duration_seconds = max(0.0, duration_seconds)
 
                             direction = f"{first_line}->{second_line}"
 
@@ -423,6 +432,7 @@ def run() -> None:
                                     "Direction": direction,
                                     "LineA(t1)": frame_to_timestamp(first_frame, fps),
                                     "LineB(t2)": frame_to_timestamp(second_frame, fps),
+                                    "Duration": seconds_to_ss_mmm(duration_seconds),
                                 }
                             )
 
@@ -498,7 +508,7 @@ def run() -> None:
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows, columns=["Vehicle", "Vehicle type", "Direction", "LineA(t1)", "LineB(t2)"]).to_excel(out_path, index=False)
+    pd.DataFrame(rows, columns=["Vehicle", "Vehicle type", "Direction", "LineA(t1)", "LineB(t2)", "Duration"]).to_excel(out_path, index=False)
     print(f"Saved {len(rows)} records to {out_path}")
 
 

@@ -67,10 +67,11 @@ The generated Excel file includes:
 - `Direction` (`ENTRY->EXIT` or `EXIT->ENTRY`)
 - `LineA(t1)` first crossed-line timestamp (`HH:MM:SS.mmm`)
 - `LineB(t2)` second crossed-line timestamp (`HH:MM:SS.mmm`)
+- `Duration` time between `t1` and `t2` (`SS.mmm`)
 
 Example:
 
-| Vehicle | Vehicle type | Direction | LineA(t1) | LineB(t2) |
-|-----------:|:------------:|:-----------:|:----------:|:---------:|
-| 1 | car | ENTRY->EXIT | 00:01:12.145 | 00:01:25.908 |
-| 2 | bus | EXIT->ENTRY | 00:02:03.021 | 00:02:18.774 |
+| Vehicle | Vehicle type | Direction | LineA(t1) | LineB(t2) | Duration |
+|-----------:|:------------:|:-----------:|:----------:|:---------:|:---------:|
+| 1 | car | ENTRY->EXIT | 00:01:12.145 | 00:01:25.908 | 13.763 |
+| 2 | bus | EXIT->ENTRY | 00:02:03.021 | 00:02:18.774 | 15.753 |
