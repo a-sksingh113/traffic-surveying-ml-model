@@ -414,8 +414,6 @@ def run() -> None:
                             second_line = crossed_line
                             second_frame = frame_index
 
-                            entry_frame = first_frame if first_line == "ENTRY" else second_frame
-                            exit_frame = first_frame if first_line == "EXIT" else second_frame
                             direction = f"{first_line}->{second_line}"
 
                             trip_rows.append(
@@ -423,8 +421,8 @@ def run() -> None:
                                     "Vehicle": state.vehicle_id,
                                     "Vehicle type": state.vehicle_type,
                                     "Direction": direction,
-                                    "LineA(t1)": frame_to_timestamp(entry_frame, fps),
-                                    "LineB(t2)": frame_to_timestamp(exit_frame, fps),
+                                    "LineA(t1)": frame_to_timestamp(first_frame, fps),
+                                    "LineB(t2)": frame_to_timestamp(second_frame, fps),
                                 }
                             )
 
