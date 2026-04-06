@@ -4,7 +4,7 @@ This project detects and tracks road vehicles in a recorded video, logs when eac
 
 ## Features
 
-- YOLOv8 vehicle detection (`car`, `motorcycle`, `bus`, `truck`)
+- YOLOv8 vehicle detection (`bicycle`, `car`, `motorcycle`, `bus`, `truck`)
 - ByteTrack-based multi-object tracking with persistent IDs
 - Entry/Exit line crossing event detection
 - Timestamp generation from `frame_index / FPS`

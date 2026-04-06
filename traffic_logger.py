@@ -14,6 +14,7 @@ from ultralytics import YOLO
 
 
 VEHICLE_CLASSES = {
+    1: "bicycle",
     2: "car",
     3: "motorcycle",
     5: "bus",
