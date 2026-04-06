@@ -21,6 +21,16 @@ VEHICLE_CLASSES = {
     7: "truck",
 }
 
+SEGMENT_LENGTH_METERS = 10.0
+ANALYSIS_INTERVAL_MINUTES = 3
+PCU_FACTORS = {
+    "car": 1.0,
+    "truck": 3.0,
+    "bus": 3.0,
+    "motorcycle": 0.5,
+    "bicycle": 0.5,
+}
+
 
 @dataclass
 class VehicleState:
@@ -51,6 +61,84 @@ def frame_to_timestamp(frame_index: int, fps: float) -> str:
     if fps <= 0:
         return "00:00:00.000"
     return seconds_to_hhmmss_mmm(frame_index / fps)
+
+
+def vehicle_to_pcu(vehicle_type: str) -> float:
+    return PCU_FACTORS.get(vehicle_type.lower(), 1.0)
+
+
+def speed_kmh(segment_length_m: float, duration_seconds: float) -> float:
+    if duration_seconds <= 0:
+        return 0.0
+    segment_length_km = segment_length_m / 1000.0
+    duration_hours = duration_seconds / 3600.0
+    if duration_hours <= 0:
+        return 0.0
+    return segment_length_km / duration_hours
+
+
+def build_traffic_analysis_rows(
+    trip_rows: list[dict],
+    observation_duration_seconds: float,
+    segment_length_m: float = SEGMENT_LENGTH_METERS,
+    interval_minutes: int = ANALYSIS_INTERVAL_MINUTES,
+) -> list[dict]:
+    if interval_minutes <= 0:
+        raise ValueError("interval_minutes must be greater than zero")
+
+    interval_seconds = float(interval_minutes * 60)
+    duration_seconds = max(0.0, observation_duration_seconds)
+    segment_count = max(1, int(math.ceil(duration_seconds / interval_seconds)))
+
+    rows = []
+    for segment_index in range(segment_count):
+        start_sec = segment_index * interval_seconds
+        end_sec = start_sec + interval_seconds
+
+        segment_trips = [
+            row
+            for row in trip_rows
+            if start_sec <= float(row.get("_event_seconds", 0.0)) < end_sec
+        ]
+
+        vehicle_count = len(segment_trips)
+        speeds = []
+        pcu_sum = 0.0
+
+        for trip in segment_trips:
+            duration = float(trip.get("_duration_seconds", 0.0))
+            speed = speed_kmh(segment_length_m, duration)
+            if speed > 0:
+                speeds.append(speed)
+            pcu_sum += vehicle_to_pcu(str(trip.get("Vehicle type", "vehicle")))
+
+        if speeds:
+            time_mean_speed = sum(speeds) / len(speeds)
+            space_mean_speed = len(speeds) / sum(1.0 / s for s in speeds)
+        else:
+            time_mean_speed = 0.0
+            space_mean_speed = 0.0
+
+        flow_vehicles_per_hour = vehicle_count * (60.0 / interval_minutes)
+        flow_q_pcu_per_hour = pcu_sum * (60.0 / interval_minutes)
+        density = (flow_q_pcu_per_hour / time_mean_speed) if time_mean_speed > 0 else 0.0
+
+        start_min = int(start_sec // 60)
+        end_min = int(end_sec // 60)
+        rows.append(
+            {
+                "Time Segment (minutes)": f"{start_min}-{end_min}",
+                "Number of Vehicles": vehicle_count,
+                "Length of Segment (m)": segment_length_m,
+                "Time Mean Speed (km/h)": round(time_mean_speed, 3),
+                "Space Mean Speed (km/h)": round(space_mean_speed, 3),
+                "Flow (vehicles/hour)": round(flow_vehicles_per_hour, 3),
+                "Flow (Q) in PCU/hour": round(flow_q_pcu_per_hour, 3),
+                "Density (PCU/km)": round(density, 3),
+            }
+        )
+
+    return rows
 
 
 def point_side(p1: Tuple[int, int], p2: Tuple[int, int], point: Tuple[float, float]) -> float:
@@ -423,6 +511,7 @@ def run() -> None:
                             duration_seconds = ((second_frame - first_frame) / fps) if fps > 0 else 0.0
                             duration_seconds = max(0.0, duration_seconds)
 
+
                             direction = f"{first_line}->{second_line}"
 
                             trip_rows.append(
@@ -433,6 +522,8 @@ def run() -> None:
                                     "LineA(t1)": frame_to_timestamp(first_frame, fps),
                                     "LineB(t2)": frame_to_timestamp(second_frame, fps),
                                     "Duration": seconds_to_ss_mmm(duration_seconds),
+                                    "_event_seconds": (second_frame / fps) if fps > 0 else 0.0,
+                                    "_duration_seconds": duration_seconds,
                                 }
                             )
 
@@ -505,11 +596,42 @@ def run() -> None:
         cv2.destroyAllWindows()
 
     rows = trip_rows
+    observation_duration_seconds = (frame_index / fps) if fps > 0 else 0.0
+    analysis_rows = build_traffic_analysis_rows(
+        trip_rows=rows,
+        observation_duration_seconds=observation_duration_seconds,
+        segment_length_m=SEGMENT_LENGTH_METERS,
+        interval_minutes=ANALYSIS_INTERVAL_MINUTES,
+    )
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows, columns=["Vehicle", "Vehicle type", "Direction", "LineA(t1)", "LineB(t2)", "Duration"]).to_excel(out_path, index=False)
-    print(f"Saved {len(rows)} records to {out_path}")
+    trip_df = pd.DataFrame(rows, columns=["Vehicle", "Vehicle type", "Direction", "LineA(t1)", "LineB(t2)", "Duration"])
+    analysis_df = pd.DataFrame(
+        analysis_rows,
+        columns=[
+            "Time Segment (minutes)",
+            "Number of Vehicles",
+            "Length of Segment (m)",
+            "Time Mean Speed (km/h)",
+            "Space Mean Speed (km/h)",
+            "Flow (vehicles/hour)",
+            "Flow (Q) in PCU/hour",
+            "Density (PCU/km)",
+        ],
+    )
+
+    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+        trip_df.to_excel(writer, sheet_name="Trip Log", index=False)
+        analysis_df.to_excel(writer, sheet_name="Traffic Analysis", index=False)
+
+    print(
+        f"Saved {len(rows)} trip records and {len(analysis_rows)} traffic analysis rows to {out_path}"
+    )
+
+
+
+
 
 
 if __name__ == "__main__":

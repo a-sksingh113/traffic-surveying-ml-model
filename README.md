@@ -62,12 +62,31 @@ Playback speed tips:
 
 The generated Excel file includes:
 
-- `Vehicle`
-- `Vehicle Type`
-- `Direction` (`ENTRY->EXIT` or `EXIT->ENTRY`)
-- `LineA(t1)` first crossed-line timestamp (`HH:MM:SS.mmm`)
-- `LineB(t2)` second crossed-line timestamp (`HH:MM:SS.mmm`)
-- `Duration` time between `t1` and `t2` (`SS.mmm`)
+- Sheet `Trip Log`
+	- `Vehicle`
+	- `Vehicle Type`
+	- `Direction` (`ENTRY->EXIT` or `EXIT->ENTRY`)
+	- `LineA(t1)` first crossed-line timestamp (`HH:MM:SS.mmm`)
+	- `LineB(t2)` second crossed-line timestamp (`HH:MM:SS.mmm`)
+	- `Duration` time between `t1` and `t2` (`SS.mmm`)
+
+- Sheet `Traffic Analysis` (3-minute intervals)
+	- `Time Segment (minutes)`
+	- `Number of Vehicles`
+	- `Length of Segment (m)` (constant = 10)
+	- `Time Mean Speed (km/h)`
+	- `Space Mean Speed (km/h)`
+	- `Flow (vehicles/hour)`
+	- `Flow (Q) in PCU/hour`
+	- `Density (PCU/km)`
+
+`Traffic Analysis` uses PCU factors:
+
+- `car = 1.0`
+- `truck = 3.0`
+- `bus = 3.0`
+- `motorcycle = 0.5`
+- `bicycle = 0.5`
 
 Example:
 
